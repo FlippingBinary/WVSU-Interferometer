@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+# Local staging folders
+/**/tmp/*
+
+# Sample video from YouTube
+*.mp4

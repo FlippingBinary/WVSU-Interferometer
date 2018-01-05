@@ -1,0 +1,16 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build interferometer",
+            "type": "shell",
+            "command": "g++ -o interferometer -g main.cpp -L C:/opencv/build/x64/vc15/lib -I C:/opencv/build/include -lopencv_world340d"
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
