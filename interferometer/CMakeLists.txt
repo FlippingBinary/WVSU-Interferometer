@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 2.8)
+project( Interferometer )
+set(SHARED_LIBS OFF)
+set(STATIC_LIBS ON)
+find_package( OpenCV REQUIRED )
+include_directories( ${OpenCV_INCLUDE_DIRS} )
+add_executable( Interferometer main.cpp )
+target_link_libraries( Interferometer ${OpenCV_LIBS} )
