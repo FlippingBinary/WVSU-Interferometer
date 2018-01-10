@@ -4,12 +4,55 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "build interferometer",
+            "label": "CMake",
             "type": "shell",
-            "command": "g++ -o interferometer -g main.cpp -L C:/opencv/build/x64/vc15/lib -I C:/opencv/build/include -lopencv_world340d"
+            "command": "cmake .",
+            "windows": {
+                "command": "cmake . -G 'MinGW Makefiles'"
+            },
             "group": {
                 "kind": "build",
                 "isDefault": true
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always"
+            }
+        },
+        {
+            "label": "GNU make",
+            "type": "shell",
+            "command": "make",
+            "windows": {
+                "command": "mingw32-make"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "presentation": {
+                "reveal": "never"
+            }
+        },
+        {
+            "label": "Run Interferometer",
+            "type": "shell",
+            "command": "./interferometer",
+            "windows": {
+                "command": "./Interferometer.exe"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "presentation": {
+                "reveal": "never"
             }
         }
     ]

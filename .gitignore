@@ -31,8 +31,17 @@
 *.out
 *.app
 
-# Local staging folders
+# Temporary files
 /**/tmp/*
+*~
+*.tmp
 
-# Sample video from YouTube
+# Sample video
 *.mp4
+*.h264
+
+# CMake generated files
+*.cmake
+CMakeCache.txt
+/**/CMakeFiles/*
+Makefile
