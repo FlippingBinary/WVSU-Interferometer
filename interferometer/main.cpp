@@ -1,9 +1,9 @@
 #include "opencv2/imgproc.hpp"
 #include "opencv2/highgui.hpp"
 #include <iostream>
-#include <stdlib.h>
+#include <cstdlib>
 using namespace std;
-using namespace cv;
+//using namespace cv;
 void on_low_r_thresh_trackbar(int, void *);
 void on_high_r_thresh_trackbar(int, void *);
 void on_low_g_thresh_trackbar(int, void *);
@@ -12,32 +12,32 @@ void on_low_b_thresh_trackbar(int, void *);
 void on_high_b_thresh_trackbar(int, void *);
 int low_r=155, low_g=0, low_b=0;
 int high_r=255, high_g=70, high_b=70;
-vector<vector<Point>> contours;
-vector<Vec4i> hierarchy;
+vector<vector<cv::Point>> contours;
+vector<cv::Vec4i> hierarchy;
 int main()
 {
-    Mat frame, frame_threshold;
+    cv::Mat frame, frame_threshold;
     char in;
     /*
     ** Interferometer.mp4 must be a video of interferometer fringes in the CWD.
     ** This is a hard coded filename for now because it is only for testing purposes.
     */
-    VideoCapture cap("Interferometer.mp4");
-    namedWindow("Video Capture", WINDOW_NORMAL);
-    namedWindow("Object Detection", WINDOW_NORMAL);
+    cv::VideoCapture cap("Interferometer.mp4");
+    cv::namedWindow("Video Capture", cv::WINDOW_NORMAL);
+    cv::namedWindow("Object Detection", cv::WINDOW_NORMAL);
     // Trackbars to set thresholds for RGB values
-    createTrackbar("Low R","Object Detection", &low_r, 255, on_low_r_thresh_trackbar);
-    createTrackbar("High R","Object Detection", &high_r, 255, on_high_r_thresh_trackbar);
-    createTrackbar("Low G","Object Detection", &low_g, 255, on_low_g_thresh_trackbar);
-    createTrackbar("High G","Object Detection", &high_g, 255, on_high_g_thresh_trackbar);
-    createTrackbar("Low B","Object Detection", &low_b, 255, on_low_b_thresh_trackbar);
-    createTrackbar("High B","Object Detection", &high_b, 255, on_high_b_thresh_trackbar);
-    while((in=(char)waitKey(1))!='q'){
+    cv::createTrackbar("Low R","Object Detection", &low_r, 255, on_low_r_thresh_trackbar);
+    cv::createTrackbar("High R","Object Detection", &high_r, 255, on_high_r_thresh_trackbar);
+    cv::createTrackbar("Low G","Object Detection", &low_g, 255, on_low_g_thresh_trackbar);
+    cv::createTrackbar("High G","Object Detection", &high_g, 255, on_high_g_thresh_trackbar);
+    cv::createTrackbar("Low B","Object Detection", &low_b, 255, on_low_b_thresh_trackbar);
+    cv::createTrackbar("High B","Object Detection", &high_b, 255, on_high_b_thresh_trackbar);
+    while((in=(char)cv::waitKey(1))!='q'){
         /*
         ** This snippet below just causes the sample video to loop
         */
-        if(cap.get(CV_CAP_PROP_POS_FRAMES)==cap.get(CAP_PROP_FRAME_COUNT)) {
-            cap.set(CV_CAP_PROP_POS_FRAMES,0);
+        if(cap.get(cv::CAP_PROP_POS_FRAMES)==cap.get(cv::CAP_PROP_FRAME_COUNT)) {
+            cap.set(cv::CAP_PROP_POS_FRAMES,0);
         }
         /*
         ** This conditional below causes the video to only progress one frame each time
@@ -54,10 +54,10 @@ int main()
             // The defaults I set above seem to work well, but the sliders allow the developer
             // to adjust those values for a particular video. These values are very important
             // to get right.
-            inRange(frame,Scalar(low_b,low_g,low_r), Scalar(high_b,high_g,high_r),frame_threshold);
+            inRange(frame,cv::Scalar(low_b,low_g,low_r), cv::Scalar(high_b,high_g,high_r),frame_threshold);
             // Now that we have a binary image (frame_threshold) we can find circles.
             // The function below finds Contours, which are oddly-shaped objects and not yet circles.
-            findContours(frame_threshold, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE);
+            findContours(frame_threshold, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
             /*
             ** TODO: Replace the code below with code that detects the minEnclosingCircle of the
             ** detected contour areas. Then the deepest set of nested circles should be considered
@@ -77,8 +77,8 @@ int main()
             int idx = 0;
             for( ; idx >= 0; idx = hierarchy[idx][0] )
             {
-                Scalar color( rand()&255, rand()&255, rand()&255 );
-                drawContours( frame, contours, idx, color, FILLED, 8, hierarchy );
+                cv::Scalar color( rand()&255, rand()&255, rand()&255 );
+                drawContours( frame, contours, idx, color, cv::FILLED, 8, hierarchy );
             }
             // Show the frames. The "Object Detection" window is warped, but can be resized.
             imshow("Video Capture",frame);
@@ -94,30 +94,30 @@ int main()
 void on_low_r_thresh_trackbar(int, void *)
 {
     low_r = min(high_r-1, low_r);
-    setTrackbarPos("Low R","Object Detection", low_r);
+    cv::setTrackbarPos("Low R","Object Detection", low_r);
 }
 void on_high_r_thresh_trackbar(int, void *)
 {
     high_r = max(high_r, low_r+1);
-    setTrackbarPos("High R", "Object Detection", high_r);
+    cv::setTrackbarPos("High R", "Object Detection", high_r);
 }
 void on_low_g_thresh_trackbar(int, void *)
 {
     low_g = min(high_g-1, low_g);
-    setTrackbarPos("Low G","Object Detection", low_g);
+    cv::setTrackbarPos("Low G","Object Detection", low_g);
 }
 void on_high_g_thresh_trackbar(int, void *)
 {
     high_g = max(high_g, low_g+1);
-    setTrackbarPos("High G", "Object Detection", high_g);
+    cv::setTrackbarPos("High G", "Object Detection", high_g);
 }
 void on_low_b_thresh_trackbar(int, void *)
 {
     low_b= min(high_b-1, low_b);
-    setTrackbarPos("Low B","Object Detection", low_b);
+    cv::setTrackbarPos("Low B","Object Detection", low_b);
 }
 void on_high_b_thresh_trackbar(int, void *)
 {
     high_b = max(high_b, low_b+1);
-    setTrackbarPos("High B", "Object Detection", high_b);
+    cv::setTrackbarPos("High B", "Object Detection", high_b);
 }

@@ -46,24 +46,27 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceRoot}",
-                "C:/opencv/opencv-3.4.0/build/install/include",
                 "C:/msys64/mingw64/include/c++/7.2.0",
                 "C:/msys64/mingw64/include/c++/7.2.0/x86_64-w64-mingw32",
-                "C:/msys64/mingw64/include/c++/7.2.0/tr1",
-                "C:/msys64/mingw64/x86_64-w64-mingw32/include"
+                "C:/msys64/mingw64/include/c++/7.2.0/backward",
+                "C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/7.2.0/include",
+                "C:/msys64/mingw64/include",
+                "C:/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/7.2.0/include-fixed",
+                "C:/msys64/mingw64/x86_64-w64-mingw32/include",
+                "C:/opencv/opencv-3.4.0/build/install/include"
             ],
             "defines": [
                 "_DEBUG",
-                "UNICODE"
+                "UNICODE",
+                "__GNUC__=6",
+                "__cdecl=__attribute__((__cdecl__))"
             ],
             "intelliSenseMode": "clang-x64",
             "browse": {
                 "path": [
-                    "C:/msys64/mingw64/include",
-                    "C:/msys64/mingw64/include/c++/7.2.0",
-                    "C:/msys64/mingw64/x86_64-w64-mingw32/include",
-                    "C:/opencv/opencv-3.4.0/build/install/include",
-                    "${workspaceRoot}"
+                    "${workspaceRoot}",
+                    "C:/msys64",
+                    "C:/opencv/opencv-3.4.0/build/install/include"
                 ],
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": ""
