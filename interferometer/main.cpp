@@ -17,7 +17,8 @@ int main()
 {
   vector<vector<cv::Point>> contours;
   vector<cv::Vec4i> hierarchy;
-  cv::Mat frame, frame_masked, frame_threshold, frame_circles;
+  cv::Mat frame, frame_masked, frame_detect, frame_barcode;
+  cv::Mat barcode, barcode_mean, barcode_greyscale;
   vector<int> contour_depths;
   int contour_deepest;
   char in;
@@ -25,21 +26,21 @@ int main()
   // The filename is hardcoded for testing purposes.
   cv::VideoCapture cap("Interferometer.mp4");
   cv::namedWindow("1. Source Video", cv::WINDOW_AUTOSIZE);
-  cv::namedWindow("2. Binary Stage", cv::WINDOW_AUTOSIZE);
-  //  cv::namedWindow("3. Circle Stage", cv::WINDOW_AUTOSIZE);
+  cv::namedWindow("2. Detect Stage", cv::WINDOW_AUTOSIZE);
+  cv::namedWindow("3. Barcode Stage", cv::WINDOW_AUTOSIZE);
 
   // Trackbars to set thresholds for RGB values
-  cv::createTrackbar("Low R", "2. Binary Stage", &low_r, 255,
+  cv::createTrackbar("Low R", "2. Detect Stage", &low_r, 255,
                      on_low_r_thresh_trackbar);
-  cv::createTrackbar("High R", "2. Binary Stage", &high_r, 255,
+  cv::createTrackbar("High R", "2. Detect Stage", &high_r, 255,
                      on_high_r_thresh_trackbar);
-  cv::createTrackbar("Low G", "2. Binary Stage", &low_g, 255,
+  cv::createTrackbar("Low G", "2. Detect Stage", &low_g, 255,
                      on_low_g_thresh_trackbar);
-  cv::createTrackbar("High G", "2. Binary Stage", &high_g, 255,
+  cv::createTrackbar("High G", "2. Detect Stage", &high_g, 255,
                      on_high_g_thresh_trackbar);
-  cv::createTrackbar("Low B", "2. Binary Stage", &low_b, 255,
+  cv::createTrackbar("Low B", "2. Detect Stage", &low_b, 255,
                      on_low_b_thresh_trackbar);
-  cv::createTrackbar("High B", "2. Binary Stage", &high_b, 255,
+  cv::createTrackbar("High B", "2. Detect Stage", &high_b, 255,
                      on_high_b_thresh_trackbar);
   while ((in = (char)cv::waitKey(1)) != 'q')
   {
@@ -67,12 +68,12 @@ int main()
                   cv::Scalar(high_b, high_g, high_r), frame_masked);
 
       // Apply adaptive thresholding
-      cv::adaptiveThreshold(frame_masked, frame_threshold, 255,
+      cv::adaptiveThreshold(frame_masked, frame_detect, 255,
                             cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY,
                             11, 2);
 
-      // Find contours in the binary image (frame_threshold)
-      cv::findContours(frame_threshold, contours, hierarchy,
+      // Find contours in the binary image (frame_detect)
+      cv::findContours(frame_detect, contours, hierarchy,
                        cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
 
       // Determine hierarchical depth of each contour
@@ -90,9 +91,6 @@ int main()
             contour_deepest = contour_depths[i];
         }
       }
-
-      // Start with a clean slate for displaying circles
-      frame_circles = cv::Mat::zeros(frame.size(), CV_8UC3);
 
       // Display depth of deepest contour
       string depth_string = to_string(contour_deepest);
@@ -121,7 +119,7 @@ int main()
             // Rule out the smaller circles. Gaussian blur might be preferable.
             if (radius[j] > 20)
             {
-              cv::circle(frame, center[j], (int)radius[j],
+              cv::circle(frame_detect, center[j], (int)radius[j],
                          cv::Scalar(rand() & 255, rand() & 255, rand() & 255), 2, 8, 0);
               center_average.x += center[j].x;
               center_average.y += center[j].y;
@@ -132,19 +130,36 @@ int main()
           //          break;
         }
       }
+
+      // Average center points together to find detection point
       center_average.x = center_average.x / center_count;
       center_average.y = center_average.y / center_count;
-      cv::drawMarker(frame, center_average,
-                     cv::Scalar(rand() & 255, rand() & 255, rand() & 255));
 
-      // TODO: average the center points of those circles
+      // Clip rectangle from around detection point
+      frame_barcode = frame(cv::Rect(center_average.x - 100,
+                                     center_average.y - 10, 200, 20));
+      frame_barcode.copyTo(barcode);
+
+      // Find barcode mean
+      cv::reduce(barcode, barcode_mean, 0, cv::REDUCE_AVG);
+
+      // Vertical stretch it to be more visible
+      cv::resize(barcode_mean, barcode, barcode.size(), 0, 0,
+                 cv::INTER_NEAREST);
+
+      // Convert barcode to greyscale
+      cv::cvtColor(barcode, barcode_greyscale, cv::COLOR_BGR2GRAY);
+
       // TODO: evaluate the color of the pixel at the average center point
       // TODO: determine if the fringes moved in or out
 
+      // Draw crosshairs over detection point
+      cv::drawMarker(frame, center_average,
+                     cv::Scalar(rand() & 255, rand() & 255, rand() & 255));
       // Display all detection images (this will not be in production version)
       imshow("1. Source Video", frame);
-      imshow("2. Binary Stage", frame_threshold);
-      //      imshow("3. Circle Stage", frame_circles);
+      imshow("2. Detect Stage", frame_detect);
+      imshow("3. Barcode Stage", barcode_greyscale);
     }
   }
   return 0;
@@ -156,30 +171,30 @@ int main()
 void on_low_r_thresh_trackbar(int, void *)
 {
   low_r = min(high_r - 1, low_r);
-  cv::setTrackbarPos("Low R", "2. Binary Stage", low_r);
+  cv::setTrackbarPos("Low R", "2. Detect Stage", low_r);
 }
 void on_high_r_thresh_trackbar(int, void *)
 {
   high_r = max(high_r, low_r + 1);
-  cv::setTrackbarPos("High R", "2. Binary Stage", high_r);
+  cv::setTrackbarPos("High R", "2. Detect Stage", high_r);
 }
 void on_low_g_thresh_trackbar(int, void *)
 {
   low_g = min(high_g - 1, low_g);
-  cv::setTrackbarPos("Low G", "2. Binary Stage", low_g);
+  cv::setTrackbarPos("Low G", "2. Detect Stage", low_g);
 }
 void on_high_g_thresh_trackbar(int, void *)
 {
   high_g = max(high_g, low_g + 1);
-  cv::setTrackbarPos("High G", "2. Binary Stage", high_g);
+  cv::setTrackbarPos("High G", "2. Detect Stage", high_g);
 }
 void on_low_b_thresh_trackbar(int, void *)
 {
   low_b = min(high_b - 1, low_b);
-  cv::setTrackbarPos("Low B", "2. Binary Stage", low_b);
+  cv::setTrackbarPos("Low B", "2. Detect Stage", low_b);
 }
 void on_high_b_thresh_trackbar(int, void *)
 {
   high_b = max(high_b, low_b + 1);
-  cv::setTrackbarPos("High B", "2. Binary Stage", high_b);
+  cv::setTrackbarPos("High B", "2. Detect Stage", high_b);
 }
