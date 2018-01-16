@@ -18,6 +18,7 @@ int main()
   vector<vector<cv::Point>> contours;
   vector<cv::Vec4i> hierarchy;
   cv::Mat frame, frame_masked, frame_detect, frame_barcode;
+  cv::Mat target, target_greyscale, target_inverted;
   cv::Mat barcode, barcode_mean, barcode_greyscale;
   vector<int> contour_depths;
   int contour_deepest;
@@ -27,7 +28,8 @@ int main()
   cv::VideoCapture cap("Interferometer.mp4");
   cv::namedWindow("1. Source Video", cv::WINDOW_AUTOSIZE);
   cv::namedWindow("2. Detect Stage", cv::WINDOW_AUTOSIZE);
-  cv::namedWindow("3. Barcode Stage", cv::WINDOW_AUTOSIZE);
+  cv::namedWindow("3. Target Stage", cv::WINDOW_AUTOSIZE);
+  cv::namedWindow("4. Barcode Stage", cv::WINDOW_AUTOSIZE);
 
   // Trackbars to set thresholds for RGB values
   cv::createTrackbar("Low R", "2. Detect Stage", &low_r, 255,
@@ -60,6 +62,9 @@ int main()
       if (frame.empty())
         break;
 
+      // Blur the image to make contour detection go more smoothly
+      cv::medianBlur(frame, frame, 5);
+
       // Detect the object based on RGB Range Values
       // The defaults set above seem to work well, but the sliders
       // allow the developer to adjust those values for a particular
@@ -75,6 +80,9 @@ int main()
       // Find contours in the binary image (frame_detect)
       cv::findContours(frame_detect, contours, hierarchy,
                        cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+
+      // Convert frame_detect to color so overlayed circles can be colorized
+      cv::cvtColor(frame_detect, frame_detect, cv::COLOR_GRAY2BGR);
 
       // Determine hierarchical depth of each contour
       contour_depths.clear();
@@ -132,15 +140,22 @@ int main()
       }
 
       // Average center points together to find detection point
-      center_average.x = center_average.x / center_count;
-      center_average.y = center_average.y / center_count;
+      center_average.x = (center_average.x / center_count) - 1;
+      center_average.y = (center_average.y / center_count) + 1;
+
+      // Clip target area in separate cv::Mat
+      target = frame(cv::Rect(center_average.x - 100,
+                              center_average.y - 100, 200, 200));
+
+      // Convert target area to greyscale
+      cv::cvtColor(target, target_greyscale, cv::COLOR_BGR2GRAY);
 
       // Clip rectangle from around detection point
       frame_barcode = frame(cv::Rect(center_average.x - 100,
                                      center_average.y - 10, 200, 20));
       frame_barcode.copyTo(barcode);
 
-      // Find barcode mean
+      // Find barcode vertical mean (convert it to a single pixel row)
       cv::reduce(barcode, barcode_mean, 0, cv::REDUCE_AVG);
 
       // Vertical stretch it to be more visible
@@ -159,7 +174,8 @@ int main()
       // Display all detection images (this will not be in production version)
       imshow("1. Source Video", frame);
       imshow("2. Detect Stage", frame_detect);
-      imshow("3. Barcode Stage", barcode_greyscale);
+      imshow("3. Target Stage", target_greyscale);
+      imshow("4. Barcode Stage", barcode_greyscale);
     }
   }
   return 0;
