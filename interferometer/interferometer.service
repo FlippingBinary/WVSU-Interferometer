@@ -1,0 +1,19 @@
+# systemd service file to automatically launch interferometer
+# install file in /lib/systemd/system on Raspberry Pi and execute:
+#
+## sudo chmod 644 /lib/systemd/system/interferometer.service
+## sudo systemctl daemon-reload
+## sudo systemctl enable interferometer.service
+## sudo systemctl start interferometer.service
+
+[Unit]
+Description=Interferometer
+After=multi-user.target
+ 
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/interferometer
+Restart=on-abort
+ 
+[Install]
+WantedBy=multi-user.target
