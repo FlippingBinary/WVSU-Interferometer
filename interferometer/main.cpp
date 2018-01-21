@@ -1,3 +1,4 @@
+#include <bitset>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -5,15 +6,58 @@
 #include "opencv2/highgui.hpp"
 using namespace std;
 
+#ifdef _WIN32
 void on_low_r_thresh_trackbar(int, void *);
 void on_high_r_thresh_trackbar(int, void *);
 void on_low_g_thresh_trackbar(int, void *);
 void on_high_g_thresh_trackbar(int, void *);
 void on_low_b_thresh_trackbar(int, void *);
 void on_high_b_thresh_trackbar(int, void *);
+#else
+#include <unistd.h>  //Used for UART
+#include <fcntl.h>   //Used for UART
+#include <termios.h> //Used for UART
+
+int setup_uart()
+{
+  int uart = -1;
+  uart = open("/dev/serial0", O_RDWR | O_NOCTTY | O_NDELAY);
+  if (uart == -1)
+  {
+    cout << "FATAL ERROR: UART inaccessible!" << endl;
+    exit(EXIT_FAILURE);
+  }
+
+  // For reference, see https://en.wikibooks.org/wiki/Serial_Programming/termios
+  struct termios options;
+  tcgetattr(uart, &options);
+  options.c_cflag = B57600 | CS8 | CLOCAL | CREAD; //<Set baud rate
+  options.c_iflag = IGNPAR;
+  options.c_oflag = 0;
+  options.c_lflag = 0;
+  tcflush(uart, TCIFLUSH);
+  tcsetattr(uart, TCSANOW, &options);
+  return uart;
+}
+
+void transmit(int uart, string splat)
+  {
+    // TODO: improve code for when write is partial
+    if (uart != -1)
+    {
+      int count = write(uart, splat.c_str(), splat.length());
+      if (count < 0)
+      {
+        printf("UART TX error\n");
+      }
+    }
+  }
+
+#endif
+
 int low_r = 140, low_g = 0, low_b = 0;
 int high_r = 255, high_g = 100, high_b = 100;
-int main()
+int main(int argc, char **argv)
 {
   vector<vector<cv::Point>> contours;
   vector<cv::Vec4i> hierarchy;
@@ -22,10 +66,37 @@ int main()
   cv::Mat barcode, barcode_mean, barcode_greyscale;
   vector<int> contour_depths;
   int contour_deepest;
-  char in;
-  // Interferometer.mp4 must be a video of interferometer fringes in the CWD.
-  // The filename is hardcoded for testing purposes.
-  cv::VideoCapture cap("Interferometer.mp4");
+  if (argc > 2)
+  {
+    // Support is only provided for a single argument, so print usage and exit
+    cout << "Usage: " << argv[0] << " [source]" << endl;
+    cout << "  source = ffmpeg-compatible video file or camera number" << endl;
+    cout << endl;
+  }
+  cv::VideoCapture cap;
+  if (argc > 1)
+  {
+    // An argument is provided, so try to use that as video source
+    if (!cap.open(argv[1]))
+    {
+      // failed to open as string, so convert to integer and try again
+      if (!cap.open(atoi(argv[1])))
+      {
+        // failed to open as integer, so print error and exit
+        cout << "ERROR: Unable to open video source: " << argv[1] << endl;
+      };
+    }
+  }
+  else
+  {
+#ifdef _WIN32
+    // Interferometer.mp4 must be a video of interferometer fringes in the CWD.
+    cap.open("Interferometer.mp4");
+#else
+    cap.open(0);
+#endif
+  }
+#ifdef _WIN32
   cv::namedWindow("1. Source Video", cv::WINDOW_AUTOSIZE);
   cv::namedWindow("2. Detect Stage", cv::WINDOW_AUTOSIZE);
   cv::namedWindow("3. Target Stage", cv::WINDOW_AUTOSIZE);
@@ -44,17 +115,21 @@ int main()
                      on_low_b_thresh_trackbar);
   cv::createTrackbar("High B", "2. Detect Stage", &high_b, 255,
                      on_high_b_thresh_trackbar);
-  while ((in = (char)cv::waitKey(1)) != 'q')
+#endif
+  char in;
+  while (1)
   {
+#ifdef _WIN32
+    if ((in = (char)cv::waitKey(1)) == 'q')
+      break;
     // Loop sample video
     if (cap.get(cv::CAP_PROP_POS_FRAMES) == cap.get(cv::CAP_PROP_FRAME_COUNT))
-    {
       cap.set(cv::CAP_PROP_POS_FRAMES, 0);
-    }
     // Advance the video only when user presses 'n' so the effects of
     // processing can be fully evaluated
     if (in == 'n')
     {
+#endif
       // Bring in the next frame.
       cap >> frame;
 
@@ -100,12 +175,13 @@ int main()
         }
       }
 
+#ifdef _WIN32
       // Display depth of deepest contour
       string depth_string = to_string(contour_deepest);
       cv::putText(frame, depth_string,
                   cv::Point(frame.cols / 2, frame.rows / 2),
                   cv::FONT_HERSHEY_COMPLEX, 1, cv::Scalar(255, 255, 255));
-
+#endif
       // Identify deepest contour(s)
       vector<vector<cv::Point>> contours_poly(contours.size());
       vector<cv::Point2f> center(contours.size());
@@ -127,14 +203,16 @@ int main()
             // Rule out the smaller circles. Gaussian blur might be preferable.
             if (radius[j] > 20)
             {
+#ifdef _WIN32
               cv::circle(frame_detect, center[j], (int)radius[j],
                          cv::Scalar(rand() & 255, rand() & 255, rand() & 255), 2, 8, 0);
+#endif
               center_average.x += center[j].x;
               center_average.y += center[j].y;
               center_count++;
             }
             j = hierarchy[j][2];
-          };
+          }
           //          break;
         }
       }
@@ -152,7 +230,7 @@ int main()
 
       // Clip rectangle from around detection point
       frame_barcode = frame(cv::Rect(center_average.x - 100,
-                                     center_average.y - 10, 200, 20));
+                                     center_average.y - 10, 201, 21));
       frame_barcode.copyTo(barcode);
 
       // Convert barcode to greyscale
@@ -168,7 +246,27 @@ int main()
       cv::resize(barcode_mean, barcode, barcode.size(), 0, 0,
                  cv::INTER_NEAREST);
 
-      // TODO: evaluate the color of the pixel at the average center point
+      // Convert barcode into center-out string of numbers
+      uint8_t *pixelPtr = (uint8_t *)barcode.data;
+      bitset<208> out_array;
+      uint8_t out_array_count = 0;
+      for (int j = 0; j < barcode.cols; j++)
+      {
+        out_array[j] = pixelPtr[j] / 255;
+        if ( pixelPtr[j] > 0 )
+          out_array_count++;
+      }
+
+      // // Insert number of flipped bits at end of bitset
+      // bitset<7> out_array_count_bitset(out_array_count);
+      // for (int i=0; i<7;i++)
+      //   out_array[12][1+i] = out_array_count_bitset[i];
+      
+#ifdef _WIN32
+      cout << out_array << endl;
+#else
+      transmit(uart,out_array);
+#endif
       // TODO: reduce black and white barcode to average width of band pairs
       //       working from center point out to fringes. Cut off after about
       //       three band pairs, but be consistent so each dataset has the
@@ -178,14 +276,16 @@ int main()
       // Draw crosshairs over detection point
       cv::drawMarker(frame, center_average,
                      cv::Scalar(rand() & 255, rand() & 255, rand() & 255));
+#ifdef _WIN32
       // Display all detection images (this will not be in production version)
       imshow("1. Source Video", frame);
       imshow("2. Detect Stage", frame_detect);
       imshow("3. Target Stage", target_greyscale);
       imshow("4. Barcode Stage", barcode);
     }
+#endif
   }
-  return 0;
+  //  return 0;
 }
 
 /*
