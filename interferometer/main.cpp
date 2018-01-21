@@ -1,8 +1,8 @@
-#include "opencv2/imgproc.hpp"
-#include "opencv2/highgui.hpp"
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include "opencv2/imgproc.hpp"
+#include "opencv2/highgui.hpp"
 using namespace std;
 
 void on_low_r_thresh_trackbar(int, void *);
@@ -155,17 +155,24 @@ int main()
                                      center_average.y - 10, 200, 20));
       frame_barcode.copyTo(barcode);
 
+      // Convert barcode to greyscale
+      cv::cvtColor(barcode, barcode_greyscale, cv::COLOR_BGR2GRAY);
+
       // Find barcode vertical mean (convert it to a single pixel row)
-      cv::reduce(barcode, barcode_mean, 0, cv::REDUCE_AVG);
+      cv::reduce(barcode_greyscale, barcode_mean, 0, cv::REDUCE_AVG);
+
+      // Threshold the barcode so it's black and white
+      cv::threshold(barcode_mean, barcode_mean, 48, 255, cv::THRESH_BINARY);
 
       // Vertical stretch it to be more visible
       cv::resize(barcode_mean, barcode, barcode.size(), 0, 0,
                  cv::INTER_NEAREST);
 
-      // Convert barcode to greyscale
-      cv::cvtColor(barcode, barcode_greyscale, cv::COLOR_BGR2GRAY);
-
       // TODO: evaluate the color of the pixel at the average center point
+      // TODO: reduce black and white barcode to average width of band pairs
+      //       working from center point out to fringes. Cut off after about
+      //       three band pairs, but be consistent so each dataset has the
+      //       same number of values
       // TODO: determine if the fringes moved in or out
 
       // Draw crosshairs over detection point
@@ -175,7 +182,7 @@ int main()
       imshow("1. Source Video", frame);
       imshow("2. Detect Stage", frame_detect);
       imshow("3. Target Stage", target_greyscale);
-      imshow("4. Barcode Stage", barcode_greyscale);
+      imshow("4. Barcode Stage", barcode);
     }
   }
   return 0;
