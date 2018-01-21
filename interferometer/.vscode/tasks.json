@@ -10,13 +10,10 @@
             "windows": {
                 "command": "cmake . -G 'MinGW Makefiles'"
             },
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
             "problemMatcher": [],
             "presentation": {
-                "reveal": "always"
+                "reveal": "always",
+                "panel": "new"
             }
         },
         {
@@ -34,7 +31,8 @@
                 "$gcc"
             ],
             "presentation": {
-                "reveal": "never"
+                "reveal": "always",
+                "panel": "new"
             }
         },
         {
@@ -42,17 +40,18 @@
             "type": "shell",
             "command": "./interferometer",
             "windows": {
-                "command": "./Interferometer.exe"
+                "command": ".\\Interferometer.exe"
             },
             "group": {
-                "kind": "build",
+                "kind": "test",
                 "isDefault": true
             },
             "problemMatcher": [
                 "$gcc"
             ],
             "presentation": {
-                "reveal": "never"
+                "reveal": "always",
+                "panel": "new"
             }
         }
     ]
