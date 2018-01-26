@@ -1,0 +1,9 @@
+# PlatformIO just recreates this if it isn't here, but we don't need it.
+
+language: python
+python:
+    - "2.7"
+install:
+    - pip install -U platformio
+script:
+    - platformio run
