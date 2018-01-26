@@ -43,5 +43,15 @@
 # CMake generated files
 *.cmake
 CMakeCache.txt
-/**/CMakeFiles/*
+/**/CMakeFiles
 Makefile
+
+# Build directories
+/**/build
+
+# PlatformIO
+/**/.pioenvs
+/**/.piolibdeps
+
+# VS Code
+/**/.vscode
