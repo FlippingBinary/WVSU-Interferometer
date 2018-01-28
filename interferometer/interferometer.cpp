@@ -265,7 +265,7 @@ int main(int argc, char **argv)
 #ifdef _WIN32
       cout << out_array << endl;
 #else
-      transmit(uart,out_array);
+      transmit(uart,out_array.to_string());
 #endif
       // TODO: reduce black and white barcode to average width of band pairs
       //       working from center point out to fringes. Cut off after about
