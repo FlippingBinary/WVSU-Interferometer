@@ -6,10 +6,23 @@
         {
             "label": "CMake",
             "type": "shell",
-            "command": "cmake .",
-            "windows": {
-                "command": "cmake . -G 'MinGW Makefiles'"
+            "command": "cmake ..",
+            "options": {
+                "cwd": "${workspaceFolder}/build"
             },
+            "windows": {
+                "command": "cmake .. -G 'MinGW Makefiles'",
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            }
+        },
+        {
+            "label": "Upload to Raspberry Pi",
+            "type": "shell",
+            "command": "scp *.cpp pi@wvsu-rocksatx.local:/home/pi/WVSU-NASA-2018/interferometer/",
             "problemMatcher": [],
             "presentation": {
                 "reveal": "always",
@@ -19,6 +32,9 @@
         {
             "label": "GNU make",
             "type": "shell",
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            },
             "command": "make",
             "windows": {
                 "command": "mingw32-make"
@@ -38,9 +54,9 @@
         {
             "label": "Run Interferometer",
             "type": "shell",
-            "command": "./interferometer",
+            "command": "./build/interferometer",
             "windows": {
-                "command": ".\\Interferometer.exe"
+                "command": ".\\build\\Interferometer.exe .\\samples\\interferometer.mp4"
             },
             "group": {
                 "kind": "test",
