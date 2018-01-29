@@ -3,7 +3,10 @@
 #include <iostream>
 #include <string>
 #include "opencv2/imgproc.hpp"
+#include "opencv2/videoio.hpp"
+#ifdef _WIN32
 #include "opencv2/highgui.hpp"
+#endif
 using namespace std;
 
 #ifdef _WIN32
@@ -41,22 +44,38 @@ int setup_uart()
 }
 
 void transmit(int uart, string splat)
+{
+  // TODO: improve code for when write is partial
+  if (uart != -1)
   {
-    // TODO: improve code for when write is partial
-    if (uart != -1)
+    int count = write(uart, splat.c_str(), splat.length());
+    if (count < 0)
     {
-      int count = write(uart, splat.c_str(), splat.length());
-      if (count < 0)
-      {
-        printf("UART TX error\n");
-      }
+      printf("UART TX error\n");
     }
   }
+}
 
 #endif
 
 int low_r = 140, low_g = 0, low_b = 0;
 int high_r = 255, high_g = 100, high_b = 100;
+
+// Prepare timing variable
+double timing;
+void reset_timing()
+{
+  timing = (double)cv::getTickCount();
+}
+// This function prints out the time elapsed since
+// the last time it was executed.
+void print_timing(string message = "elapsed time")
+{
+  timing = ((double)cv::getTickCount() - timing) / cv::getTickFrequency();
+  cout << "(" << timing << ")[" << message << "]" << endl;
+  timing = (double)cv::getTickCount();
+}
+
 int main(int argc, char **argv)
 {
   vector<vector<cv::Point>> contours;
@@ -69,6 +88,7 @@ int main(int argc, char **argv)
 #ifndef _WIN32
   int uart = setup_uart();
 #endif
+  reset_timing();
   if (argc > 2)
   {
     // Support is only provided for a single argument, so print usage and exit
@@ -119,22 +139,24 @@ int main(int argc, char **argv)
   cv::createTrackbar("High B", "2. Detect Stage", &high_b, 255,
                      on_high_b_thresh_trackbar);
 #endif
-  char in;
+  char in = ' ';
   while (1)
   {
 #ifdef _WIN32
     if ((in = (char)cv::waitKey(1)) == 'q')
       break;
+#endif
     // Loop sample video
     if (cap.get(cv::CAP_PROP_POS_FRAMES) == cap.get(cv::CAP_PROP_FRAME_COUNT))
       cap.set(cv::CAP_PROP_POS_FRAMES, 0);
     // Advance the video only when user presses 'n' so the effects of
     // processing can be fully evaluated
-    if (in == 'n')
+    if (in != 'p')
     {
-#endif
+      print_timing("Start loop");
       // Bring in the next frame.
       cap >> frame;
+      print_timing("cap>>frame");
 
       // Exit if the video ended.
       if (frame.empty())
@@ -142,6 +164,7 @@ int main(int argc, char **argv)
 
       // Blur the image to make contour detection go more smoothly
       cv::medianBlur(frame, frame, 5);
+      print_timing("medianBlur");
 
       // Detect the object based on RGB Range Values
       // The defaults set above seem to work well, but the sliders
@@ -149,18 +172,22 @@ int main(int argc, char **argv)
       // video. These values are very important to get right.
       cv::inRange(frame, cv::Scalar(low_b, low_g, low_r),
                   cv::Scalar(high_b, high_g, high_r), frame_masked);
+      print_timing("inRange");
 
       // Apply adaptive thresholding
       cv::adaptiveThreshold(frame_masked, frame_detect, 255,
                             cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY,
                             11, 2);
+      print_timing("adaptiveThreshold");
 
       // Find contours in the binary image (frame_detect)
       cv::findContours(frame_detect, contours, hierarchy,
                        cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+      print_timing("findContours");
 
       // Convert frame_detect to color so overlayed circles can be colorized
       cv::cvtColor(frame_detect, frame_detect, cv::COLOR_GRAY2BGR);
+      print_timing("cvtColor");
 
       // Determine hierarchical depth of each contour
       contour_depths.clear();
@@ -177,6 +204,7 @@ int main(int argc, char **argv)
             contour_deepest = contour_depths[i];
         }
       }
+      print_timing("find deepest contour");
 
 #ifdef _WIN32
       // Display depth of deepest contour
@@ -198,11 +226,14 @@ int main(int argc, char **argv)
           int j = i;
           while (j >= 0)
           {
+            print_timing("enter contours loop");
             // Approximate contour to polygons
             approxPolyDP(cv::Mat(contours[j]), contours_poly[j], 3, true);
+            print_timing("approxPolyDP");
             // Find smallest circle which contains whole polygon
             cv::minEnclosingCircle((cv::Mat)contours_poly[j], center[j],
                                    radius[j]);
+            print_timing("minEnclosingCircle");
             // Rule out the smaller circles. Gaussian blur might be preferable.
             if (radius[j] > 20)
             {
@@ -220,6 +251,8 @@ int main(int argc, char **argv)
         }
       }
 
+      print_timing("loop finished");
+
       // Average center points together to find detection point
       center_average.x = (center_average.x / center_count) - 1;
       center_average.y = (center_average.y / center_count) + 1;
@@ -227,14 +260,17 @@ int main(int argc, char **argv)
       // Clip target area in separate cv::Mat
       target = frame(cv::Rect(center_average.x - 100,
                               center_average.y - 100, 200, 200));
+      print_timing("clip frame");
 
       // Convert target area to greyscale
       cv::cvtColor(target, target_greyscale, cv::COLOR_BGR2GRAY);
+      print_timing("cvtColor to greyscale");
 
       // Clip rectangle from around detection point
       frame_barcode = frame(cv::Rect(center_average.x - 100,
                                      center_average.y - 10, 201, 21));
       frame_barcode.copyTo(barcode);
+      print_timing("clip barcode and copy");
 
       // Convert barcode to greyscale
       cv::cvtColor(barcode, barcode_greyscale, cv::COLOR_BGR2GRAY);
@@ -256,19 +292,20 @@ int main(int argc, char **argv)
       for (int j = 0; j < barcode.cols; j++)
       {
         out_array[j] = pixelPtr[j] / 255;
-        if ( pixelPtr[j] > 0 )
+        if (pixelPtr[j] > 0)
           out_array_count++;
       }
 
-      // // Insert number of flipped bits at end of bitset
-      // bitset<7> out_array_count_bitset(out_array_count);
-      // for (int i=0; i<7;i++)
-      //   out_array[12][1+i] = out_array_count_bitset[i];
-      
+        // // Insert number of flipped bits at end of bitset
+        // bitset<7> out_array_count_bitset(out_array_count);
+        // for (int i=0; i<7;i++)
+        //   out_array[12][1+i] = out_array_count_bitset[i];
+
 #ifdef _WIN32
+
       cout << out_array << endl;
 #else
-      transmit(uart,out_array.to_string());
+    transmit(uart, out_array.to_string());
 #endif
       // TODO: reduce black and white barcode to average width of band pairs
       //       working from center point out to fringes. Cut off after about
@@ -276,21 +313,22 @@ int main(int argc, char **argv)
       //       same number of values
       // TODO: determine if the fringes moved in or out
 
+#ifdef _WIN32
       // Draw crosshairs over detection point
       cv::drawMarker(frame, center_average,
                      cv::Scalar(rand() & 255, rand() & 255, rand() & 255));
-#ifdef _WIN32
       // Display all detection images (this will not be in production version)
       imshow("1. Source Video", frame);
       imshow("2. Detect Stage", frame_detect);
       imshow("3. Target Stage", target_greyscale);
       imshow("4. Barcode Stage", barcode);
-    }
 #endif
+    }
   }
   //  return 0;
 }
 
+#ifdef _WIN32
 /*
 ** These implement the trackbars and will not be in the final code.
 */
@@ -324,3 +362,4 @@ void on_high_b_thresh_trackbar(int, void *)
   high_b = max(high_b, low_b + 1);
   cv::setTrackbarPos("High B", "2. Detect Stage", high_b);
 }
+#endif
