@@ -66,6 +66,9 @@ int main(int argc, char **argv)
   cv::Mat barcode, barcode_mean, barcode_greyscale;
   vector<int> contour_depths;
   int contour_deepest;
+#ifndef _WIN32
+  int uart = setup_uart();
+#endif
   if (argc > 2)
   {
     // Support is only provided for a single argument, so print usage and exit
